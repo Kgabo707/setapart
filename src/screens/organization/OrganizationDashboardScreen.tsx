@@ -70,6 +70,7 @@ export const OrganizationDashboardScreen = ({
             <StatusPill
               label={organization.verificationStatus}
               tone={organization.verificationStatus === 'verified' ? 'success' : 'warning'}
+              onNavy
             />
           </View>
         </Card>

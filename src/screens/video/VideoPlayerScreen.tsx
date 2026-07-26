@@ -3,7 +3,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { Button, Divider, IconButton, Snackbar, Text, TouchableRipple } from 'react-native-paper';
+import { Button, Divider, Icon, Snackbar, Text, TouchableRipple } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { OrganizationAvatar } from '../../components/common/OrganizationAvatar';
@@ -354,25 +354,28 @@ const ActionRow = ({ liked, saved, onLike, onSave, onShare, disabled }: ActionRo
 
   return (
     <View style={styles.actionRow}>
-      {actions.map((action) => (
-        <View key={action.key} style={styles.action}>
-          <IconButton
-            icon={action.icon}
-            size={22}
+      {actions.map((action) => {
+        const tint = action.active ? theme.brand.accent : theme.colors.primary;
+        return (
+          <TouchableRipple
+            key={action.key}
+            onPress={disabled ? undefined : action.onPress}
             disabled={disabled}
-            onPress={action.onPress}
-            iconColor={action.active ? theme.brand.accent : theme.colors.primary}
-            containerColor={theme.colors.surfaceVariant}
+            borderless
+            style={[styles.action, { backgroundColor: theme.colors.surfaceVariant }]}
+            accessibilityRole="button"
             accessibilityLabel={action.label}
-          />
-          <Text
-            variant="labelSmall"
-            style={{ color: action.active ? theme.brand.accent : theme.colors.onSurfaceVariant }}
+            accessibilityState={{ selected: action.active }}
           >
-            {action.label}
-          </Text>
-        </View>
-      ))}
+            <View style={styles.actionInner}>
+              <Icon source={action.icon} size={20} color={tint} />
+              <Text variant="labelMedium" style={{ color: tint }}>
+                {action.label}
+              </Text>
+            </View>
+          </TouchableRipple>
+        );
+      })}
     </View>
   );
 };
@@ -385,11 +388,18 @@ const styles = StyleSheet.create({
   pills: { flexDirection: 'row', gap: spacing.sm },
   actionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    gap: spacing.sm,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
   },
-  action: { alignItems: 'center', gap: 2 },
+  action: { flex: 1, borderRadius: radius.pill },
+  actionInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm + 2,
+  },
   orgRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   orgRowInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   orgText: { flex: 1 },

@@ -27,7 +27,8 @@ npm run android   # or: npm run ios
 ```
 
 In Expo Go the player screen still renders — artwork, metadata and the action row — with
-a short notice in place of the video surface.
+a short notice in place of the video surface. `npm run web` works and does play the Mux
+stream, which is handy for reviewing layout without a device.
 
 ### Demo mode
 
@@ -165,4 +166,9 @@ src/
 ```bash
 npm run typecheck
 npm run lint
+npm test
 ```
+
+The test suite covers the two things that are easy to break silently: the
+publish-status filter on every viewer-facing query, and the rule that applying for an
+organization must not grant the `organization` role.

@@ -163,6 +163,23 @@ export const VideoPlayerSurface = ({
         </View>
       ) : null}
 
+      {/*
+        Inline, the transport controls fade out but there must always be a way off this
+        screen, so the dismiss affordance lives outside the auto-hiding layer. In full
+        screen it belongs with the rest of the chrome.
+      */}
+      {isFullscreen ? null : (
+        <IconButton
+          icon="chevron-down"
+          iconColor={palette.white}
+          size={26}
+          onPress={onBack}
+          style={styles.dismiss}
+          containerColor="rgba(5, 15, 38, 0.45)"
+          accessibilityLabel="Close player"
+        />
+      )}
+
       {controlsVisible ? (
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
           <LinearGradient
@@ -177,13 +194,17 @@ export const VideoPlayerSurface = ({
           />
 
           <View style={styles.topBar}>
-            <IconButton
-              icon={isFullscreen ? 'fullscreen-exit' : 'chevron-down'}
-              iconColor={palette.white}
-              size={26}
-              onPress={isFullscreen ? onToggleFullscreen : onBack}
-              accessibilityLabel={isFullscreen ? 'Exit full screen' : 'Close player'}
-            />
+            {isFullscreen ? (
+              <IconButton
+                icon="fullscreen-exit"
+                iconColor={palette.white}
+                size={26}
+                onPress={onToggleFullscreen}
+                accessibilityLabel="Exit full screen"
+              />
+            ) : (
+              <View style={styles.topBarSpacer} />
+            )}
             <Text
               variant="labelLarge"
               numberOfLines={1}
@@ -297,11 +318,13 @@ const styles = StyleSheet.create({
   },
   topScrim: { position: 'absolute', top: 0, left: 0, right: 0, height: 96 },
   bottomScrim: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 },
+  dismiss: { position: 'absolute', top: spacing.xs, left: spacing.xs, margin: 0 },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingRight: spacing.xs,
   },
+  topBarSpacer: { width: 48 },
   topTitle: { flex: 1 },
   centerRow: {
     flex: 1,

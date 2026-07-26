@@ -49,8 +49,12 @@ export const FeaturedCard = ({ video, width, onPress }: FeaturedCardProps) => {
 
           <View style={styles.content}>
             <View style={styles.badges}>
-              <StatusPill label={video.isLive ? 'Live now' : 'Featured'} tone="accent" dot={video.isLive} />
-              <StatusPill label={CATEGORY_LABELS[video.category]} tone="onDark" />
+              <StatusPill
+                label={video.isLive ? 'Live now' : 'Featured'}
+                tone="accent"
+                dot={video.isLive}
+              />
+              <StatusPill label={CATEGORY_LABELS[video.category]} tone="neutral" onNavy />
             </View>
 
             <View style={styles.spacer} />

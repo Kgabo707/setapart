@@ -93,7 +93,8 @@ export const ProfileScreen = ({ navigation }: MainTabScreenProps<'Profile'>) => 
                 <StatusPill
                   key={role}
                   label={role === 'organization' ? 'Organization' : 'Viewer'}
-                  tone={role === 'organization' ? 'accent' : 'onDark'}
+                  tone={role === 'organization' ? 'accent' : 'neutral'}
+                  onNavy
                 />
               ))}
             </View>
