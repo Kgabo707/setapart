@@ -145,7 +145,7 @@ export const VideoPlayerSurface = ({
           posterUrl={posterUrl}
           message={
             error ??
-            'Video playback needs a development build — react-native-video is a native module and is not available in Expo Go.'
+            'Playback needs a development build. react-native-video is a native module, so it is not part of Expo Go — run `npx expo prebuild` then `npm run android` (or `npm run ios`).'
           }
         />
       )}

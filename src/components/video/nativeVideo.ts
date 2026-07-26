@@ -1,5 +1,6 @@
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import type { ComponentType, Ref } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+import { Platform, type StyleProp, type ViewStyle } from 'react-native';
 
 export type VideoLoadEvent = { duration: number };
 export type VideoProgressEvent = { currentTime: number; seekableDuration: number };
@@ -29,14 +30,26 @@ export type NativeVideoProps = {
 };
 
 /**
- * `react-native-video` ships a native module, so it is absent in Expo Go and on web.
- * Resolving it lazily lets the rest of the player screen render (artwork, metadata,
- * actions) with a clear message instead of a redbox when the module is missing.
+ * Expo Go bundles a fixed set of native modules and `react-native-video` is not among
+ * them. Importing it there still succeeds — it binds through `requireNativeComponent`,
+ * which resolves lazily and renders an "Unimplemented component" box rather than
+ * throwing — so the environment has to be checked directly instead of relying on the
+ * import failing.
  *
- * In a development build or a release build produced by `expo prebuild`, this resolves
- * to the real component.
+ * Web is fine: the package ships a `.web.js` implementation backed by `<video>`.
+ */
+export const isNativeVideoAvailable =
+  Platform.OS === 'web' ||
+  Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
+
+/**
+ * Resolves the player component, or `null` when it cannot work in this runtime. Lets
+ * the player screen render its artwork, metadata and actions with an explanatory
+ * notice instead of a broken video surface.
  */
 export const loadNativeVideo = (): ComponentType<NativeVideoProps> | null => {
+  if (!isNativeVideoAvailable) return null;
+
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const module = require('react-native-video');

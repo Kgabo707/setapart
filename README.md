@@ -14,29 +14,71 @@ organization dashboard are follow-ups.
 
 ```bash
 npm install
-cp .env.example .env   # optional — see "Demo mode" below
 npm start
 ```
 
-Video playback uses `react-native-video`, which is a native module and therefore **not
-available in Expo Go**. To exercise the player you need a development build:
+No configuration is needed to try it — without Firebase credentials the app boots
+against a bundled demo dataset (see [Demo mode](#demo-mode)). Sign in with any email and
+any six-character password.
 
-```bash
-npx expo prebuild
-npm run android   # or: npm run ios
-```
+### Which way to run it
 
-In Expo Go the player screen still renders — artwork, metadata and the action row — with
-a short notice in place of the video surface. `npm run web` works and does play the Mux
-stream, which is handy for reviewing layout without a device.
+Playback uses `react-native-video`, a native module that Expo Go does not bundle. That
+is the only thing the three options differ on:
+
+| | Command | Setup | Video plays? |
+| --- | --- | --- | --- |
+| **Expo Go** | `npm start`, scan the QR code | Expo Go from the App Store / Play Store | No — the player screen renders with a notice where the video would be |
+| **Browser** | `npm run web` | None | Yes |
+| **Development build** | `npx expo prebuild` then `npm run android` / `npm run ios` | Android Studio, or Xcode for iOS | Yes |
+
+Expo Go is the fastest way to check the theme, navigation and role behaviour on a real
+device. The browser is the quickest full-feature check and needs nothing installed. A
+development build is what you want for real device playback — if you would rather not
+install Android Studio or Xcode, `npx eas build --profile development --platform android`
+builds one in the cloud instead.
+
+`src/components/video/nativeVideo.ts` detects the runtime and swaps in the notice, so
+Expo Go degrades to a poster frame rather than an "Unimplemented component" box.
 
 ### Demo mode
 
 With no Firebase credentials in `.env`, the app boots against a bundled demo dataset
 (five organizations, ~20 videos including some deliberately left in the moderation
-queue). Any email plus a six-character password signs you in, and mutations persist to
-`AsyncStorage`. This exists so the UI is reviewable before a Firebase project is wired
-up; every service module falls back to it behind `isFirebaseConfigured`.
+queue) streaming from Mux's public demo assets. Any email plus a six-character password
+signs you in, and mutations persist to `AsyncStorage`. This exists so the UI is
+reviewable before a Firebase project is wired up; every service module falls back to it
+behind `isFirebaseConfigured`.
+
+To point at a real project, `cp .env.example .env` and fill in the six values from
+Firebase console → Project settings → Your apps.
+
+### Trying the role transition
+
+The organization role is granted by a super-admin, so there is no in-app way to reach
+the dashboard. To walk the whole flow yourself:
+
+1. Sign in, go to **Profile → Register your organization** and submit the form. Profile
+   now shows "Application under review", and the dashboard entry stays hidden.
+2. Approve it the way an admin would. In demo mode the store lives in `AsyncStorage`
+   under `setapart.demo.state.v1` — on web you can edit it from the browser console:
+
+   ```js
+   const key = 'setapart.demo.state.v1';
+   const state = JSON.parse(localStorage.getItem(key));
+   const org = state.organizations.at(-1);
+   org.verificationStatus = 'verified';
+   Object.assign(state.users[state.signedInUserId], {
+     roles: ['viewer', 'organization'],
+     orgId: org.id,
+   });
+   localStorage.setItem(key, JSON.stringify(state));
+   location.reload();
+   ```
+
+   Against a real project, make the same three edits in the Firestore console.
+3. Profile now shows the **Organization Dashboard** entry, with the viewer tabs still
+   underneath.
 
 ## Design system
 
