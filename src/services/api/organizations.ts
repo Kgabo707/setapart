@@ -68,6 +68,40 @@ export const listOrganizationsByIds = async (orgIds: string[]): Promise<Organiza
 };
 
 /**
+ * Text search across verified organizations only — a pending or rejected application
+ * should never surface to a viewer, search included.
+ */
+export const searchVerifiedOrganizations = async (
+  queryText: string,
+  max = 10,
+): Promise<Organization[]> => {
+  const needle = queryText.trim().toLowerCase();
+  if (!needle) return [];
+
+  let verified: Organization[];
+  if (!isFirebaseConfigured) {
+    await hydrateDemoState();
+    verified = demoStore.getOrganizations().filter((org) => org.verificationStatus === 'verified');
+  } else {
+    const snapshot = await getDocs(
+      query(
+        collection(getDb(), COLLECTIONS.organizations),
+        where('verificationStatus', '==', 'verified'),
+        fbLimit(200),
+      ),
+    );
+    verified = snapshot.docs.map(toOrganization);
+  }
+
+  return verified
+    .filter(
+      (org) =>
+        org.name.toLowerCase().includes(needle) || org.description.toLowerCase().includes(needle),
+    )
+    .slice(0, max);
+};
+
+/**
  * Finds the application a viewer has already submitted, so the Profile screen can show
  * "under review" instead of inviting them to apply twice.
  */

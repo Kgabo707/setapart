@@ -15,7 +15,14 @@ import {
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 
-import type { Organization, PublishStatus, Video, VideoCategory, VideoWithOrg } from '../../types/models';
+import {
+  CATEGORY_LABELS,
+  type Organization,
+  type PublishStatus,
+  type Video,
+  type VideoCategory,
+  type VideoWithOrg,
+} from '../../types/models';
 import { demoStore, hydrateDemoState } from '../demo/demoStore';
 import { COLLECTIONS, getDb, isFirebaseConfigured } from '../firebase';
 import { listOrganizationsByIds } from './organizations';
@@ -236,6 +243,50 @@ export const setVideoPublishStatus = async (
     return;
   }
   await updateDoc(doc(getDb(), COLLECTIONS.videos, videoId), { publishStatus });
+};
+
+/**
+ * Text search across published videos.
+ *
+ * Firestore has no native substring/full-text search, so this pulls a bounded pool of
+ * recent published videos and filters client-side against title, description, tags,
+ * speaker and category label. That's fine at this catalog size; past a few thousand
+ * published videos this should move to a dedicated search index (Algolia, Typesense,
+ * or Firestore + a text-search extension) rather than growing the pool size further.
+ */
+const SEARCH_POOL_SIZE = 300;
+
+const matchesQuery = (video: Video, needle: string): boolean =>
+  video.title.toLowerCase().includes(needle) ||
+  video.description.toLowerCase().includes(needle) ||
+  video.tags.some((tag) => tag.toLowerCase().includes(needle)) ||
+  Boolean(video.speaker?.toLowerCase().includes(needle)) ||
+  CATEGORY_LABELS[video.category].toLowerCase().includes(needle);
+
+export const searchPublishedVideos = async (
+  queryText: string,
+  max = 30,
+): Promise<VideoWithOrg[]> => {
+  const needle = queryText.trim().toLowerCase();
+  if (!needle) return [];
+
+  let pool: Video[];
+  if (!isFirebaseConfigured) {
+    pool = await demoPublished();
+  } else {
+    const snapshot = await getDocs(
+      query(
+        collection(getDb(), COLLECTIONS.videos),
+        where('publishStatus', '==', PUBLISHED),
+        orderBy('createdAt', 'desc'),
+        fbLimit(SEARCH_POOL_SIZE),
+      ),
+    );
+    pool = snapshot.docs.map(toVideo);
+  }
+
+  const matches = pool.filter((video) => matchesQuery(video, needle)).slice(0, max);
+  return withOrganizations(matches);
 };
 
 export const listVideosByIds = async (ids: string[]): Promise<VideoWithOrg[]> => {
