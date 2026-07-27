@@ -7,4 +7,10 @@ module.exports = {
     node: true,
   },
   ignorePatterns: ["node_modules/", "dist/", ".expo/"],
+  overrides: [
+    {
+      files: ["**/__tests__/**", "jest.setup.js"],
+      env: { jest: true },
+    },
+  ],
 };

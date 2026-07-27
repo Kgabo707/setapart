@@ -16,9 +16,9 @@ import { useDiscoverySettings } from "../../hooks/useDiscoverySettings";
 import { usePlan } from "../../hooks/usePlan";
 import { useProfiles } from "../../hooks/useProfiles";
 import { useSwipedUids } from "../../hooks/useSwipedUids";
-import { distanceKm, normalizeCoords } from "../../utils/geolocation";
+import { buildDeck } from "../../utils/deck";
+import { normalizeCoords } from "../../utils/geolocation";
 import { matchIdFor, recordSwipe } from "../../utils/matching";
-import { matchesShowMe } from "../../utils/profiles";
 import { getSwipeCount, incrementSwipeCount } from "../../utils/swipeLimit";
 import MatchModal from "./MatchModal";
 import SwipeCard from "./SwipeCard";
@@ -45,33 +45,10 @@ export default function DiscoverScreen({ navigation }) {
   // Trust scores are shown to women by default.
   const showTrust = me?.gender === "woman";
 
-  const deck = useMemo(() => {
-    const [minAge, maxAge] = settings.ageRange || [18, 65];
-    return profiles
-      .filter((p) => p.uid !== user?.uid)
-      .filter((p) => !swipedUids.has(p.uid))
-      .filter((p) => matchesShowMe(p, settings.showMe))
-      .filter((p) => {
-        if (!p.age) return true;
-        return p.age >= minAge && p.age <= maxAge;
-      })
-      .filter((p) => {
-        if (!settings.intents?.length) return true;
-        return (p.intents || []).some((intent) => settings.intents.includes(intent));
-      })
-      .map((p) => {
-        const theirCoords = normalizeCoords(p.coords);
-        const distance =
-          myCoords && theirCoords ? distanceKm(myCoords, theirCoords) : null;
-        return { ...p, distance };
-      })
-      .filter((p) => {
-        if (settings.globalMode) return true;
-        if (p.distance == null) return true;
-        return p.distance <= (settings.maxDistanceKm || 160);
-      })
-      .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
-  }, [profiles, swipedUids, settings, user?.uid, myCoords]);
+  const deck = useMemo(
+    () => buildDeck(profiles, { myUid: user?.uid, myCoords, swipedUids, settings }),
+    [profiles, swipedUids, settings, user?.uid, myCoords]
+  );
 
   const visible = deck.slice(cursor, cursor + VISIBLE_CARDS);
   const outOfSwipes = !isPremium && swipeCount >= FREE_SWIPES_PER_DAY;
