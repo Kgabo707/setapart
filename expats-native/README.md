@@ -128,7 +128,8 @@ Or build in the cloud with `eas build --profile development`.
 Jest covers the pure logic — trust scoring, distance maths, deck filtering
 (including the gender mapping), mutual-match detection, swipe accounting, and
 timestamp formatting — plus render tests for the shared components and the
-trust ring.
+trust ring, and boot tests that mount the real app with Firebase mocked and
+check it lands on the right screen for each auth state.
 
 ```bash
 npm test
