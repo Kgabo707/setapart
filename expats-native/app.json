@@ -1,0 +1,83 @@
+{
+  "expo": {
+    "name": "Expats",
+    "slug": "expats-dating",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "expats",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A1A2E"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "bundleIdentifier": "com.yourname.expats",
+      "supportsTablet": false,
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We use your location to show nearby expats.",
+        "NSCameraUsageDescription": "Used for profile photos and video calls.",
+        "NSMicrophoneUsageDescription": "Used for voice notes and video calls.",
+        "NSPhotoLibraryUsageDescription": "Used to upload profile photos."
+      }
+    },
+    "android": {
+      "package": "com.yourname.expats",
+      "adaptiveIcon": {
+        "backgroundColor": "#1A1A2E",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-apple-authentication",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "We use your location to show nearby expats."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Used to upload profile photos.",
+          "cameraPermission": "Used for profile photos and video calls."
+        }
+      ],
+      "expo-notifications",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow Expats to use your microphone for voice notes."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Used for profile photos and video calls.",
+          "microphonePermission": "Used for voice notes and video calls."
+        }
+      ],
+      "@config-plugins/react-native-webrtc"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
+}
