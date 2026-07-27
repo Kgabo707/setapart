@@ -1,9 +1,21 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, Chip, HelperText, Switch, Text, TextInput } from 'react-native-paper';
+import { File } from 'expo-file-system';
+import {
+  Button,
+  Card,
+  Chip,
+  HelperText,
+  Icon,
+  ProgressBar,
+  Switch,
+  Text,
+  TextInput,
+} from 'react-native-paper';
 
 import { useAuth } from '../../context/AuthContext';
 import type { OrganizationStackScreenProps } from '../../navigation/types';
+import { createMuxUpload, uploadFileToMux, waitForMuxAsset } from '../../services/api/muxUpload';
 import { submitVideoForReview } from '../../services/api/videos';
 import { radius, spacing, useAppTheme } from '../../theme';
 import {
@@ -11,47 +23,71 @@ import {
   VIDEO_CATEGORIES,
   type VideoCategory,
 } from '../../types/models';
+import { formatDuration } from '../../utils/format';
 
-/** `12:34` or `1:02:03` → seconds. Returns null if the format doesn't parse. */
-const parseDuration = (value: string): number | null => {
-  const parts = value.trim().split(':');
-  if (parts.length < 2 || parts.length > 3 || parts.some((p) => !/^\d+$/.test(p))) return null;
-  const numbers = parts.map(Number);
-  const [h, m, s] = numbers.length === 3 ? numbers : [0, numbers[0], numbers[1]];
-  if (m >= 60 || s >= 60) return null;
-  return h * 3600 + m * 60 + s;
-};
+type UploadStage = 'idle' | 'uploading' | 'processing' | 'ready' | 'error';
+
+type MuxResult = { playbackId: string; duration: number };
 
 export const UploadVideoScreen = ({ navigation }: OrganizationStackScreenProps<'UploadVideo'>) => {
   const theme = useAppTheme();
-  const { organization } = useAuth();
+  const { organization, isDemoMode } = useAuth();
+
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [uploadStage, setUploadStage] = useState<UploadStage>('idle');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [muxResult, setMuxResult] = useState<MuxResult | null>(null);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<VideoCategory | null>(null);
-  const [videoAssetId, setVideoAssetId] = useState('');
-  const [durationText, setDurationText] = useState('');
   const [speaker, setSpeaker] = useState('');
   const [tagsText, setTagsText] = useState('');
   const [isLive, setIsLive] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  const duration = parseDuration(durationText);
+  const runUpload = useCallback(async (fileUri: string, displayName: string) => {
+    setFileName(displayName);
+    setUploadStage('uploading');
+    setUploadProgress(0);
+    setUploadError(null);
+    setMuxResult(null);
+
+    try {
+      const { uploadId, uploadUrl } = await createMuxUpload();
+      await uploadFileToMux(fileUri, uploadUrl, setUploadProgress);
+      setUploadStage('processing');
+
+      const result = await waitForMuxAsset(uploadId);
+      setMuxResult(result);
+      setUploadStage('ready');
+    } catch (caught) {
+      setUploadError(caught instanceof Error ? caught.message : 'The upload failed.');
+      setUploadStage('error');
+    }
+  }, []);
+
+  const pickAndUpload = useCallback(async () => {
+    const picked = await File.pickFileAsync({ mimeTypes: 'video/*' });
+    if (picked.canceled) return;
+    await runUpload(picked.result.uri, picked.result.name);
+  }, [runUpload]);
 
   const canSubmit =
+    uploadStage === 'ready' &&
+    Boolean(muxResult) &&
     title.trim().length >= 3 &&
     description.trim().length >= 10 &&
     Boolean(category) &&
-    videoAssetId.trim().length > 0 &&
-    duration !== null &&
     !submitting;
 
   const onSubmit = async () => {
-    if (!organization || !category || duration === null) return;
+    if (!organization || !category || !muxResult) return;
     setSubmitting(true);
-    setError(null);
+    setSubmitError(null);
     try {
       await submitVideoForReview(organization.id, {
         title: title.trim(),
@@ -61,14 +97,14 @@ export const UploadVideoScreen = ({ navigation }: OrganizationStackScreenProps<'
           .split(',')
           .map((tag) => tag.trim())
           .filter(Boolean),
-        videoAssetId: videoAssetId.trim(),
-        duration,
+        videoAssetId: muxResult.playbackId,
+        duration: muxResult.duration,
         speaker: speaker.trim() || undefined,
         isLive,
       });
       setDone(true);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'We could not submit this video.');
+      setSubmitError(caught instanceof Error ? caught.message : 'We could not submit this video.');
     } finally {
       setSubmitting(false);
     }
@@ -108,18 +144,54 @@ export const UploadVideoScreen = ({ navigation }: OrganizationStackScreenProps<'
       keyboardVerticalOffset={96}
     >
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Card
-          mode="contained"
-          style={[styles.card, styles.notice, { backgroundColor: theme.colors.surfaceVariant }]}
-        >
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            Upload the file to Mux first (Mux dashboard, or your own upload tool) and paste the
-            playback ID it gives you below. Direct in-app upload isn&apos;t wired up yet.
-          </Text>
+        {isDemoMode ? (
+          <Card
+            mode="contained"
+            style={[styles.card, styles.notice, { backgroundColor: theme.colors.surfaceVariant }]}
+          >
+            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+              Demo mode has no Firebase project to upload against — connect one in `.env` to try
+              this screen for real.
+            </Text>
+          </Card>
+        ) : null}
+
+        <Card mode="elevated" elevation={1} style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+          <View style={styles.cardBody}>
+            <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
+              1. Upload the file
+            </Text>
+
+            {uploadStage === 'idle' ? (
+              <Button
+                mode="outlined"
+                icon="cloud-upload-outline"
+                onPress={pickAndUpload}
+                style={styles.button}
+              >
+                Choose video file
+              </Button>
+            ) : null}
+
+            {uploadStage !== 'idle' ? (
+              <UploadStatus
+                fileName={fileName}
+                stage={uploadStage}
+                progress={uploadProgress}
+                error={uploadError}
+                result={muxResult}
+                onRetry={pickAndUpload}
+              />
+            ) : null}
+          </View>
         </Card>
 
         <Card mode="elevated" elevation={1} style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <View style={styles.cardBody}>
+            <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
+              2. Describe it
+            </Text>
+
             <TextInput
               mode="outlined"
               label="Title"
@@ -167,38 +239,11 @@ export const UploadVideoScreen = ({ navigation }: OrganizationStackScreenProps<'
 
             <TextInput
               mode="outlined"
-              label="Mux playback ID"
-              value={videoAssetId}
-              onChangeText={setVideoAssetId}
-              autoCapitalize="none"
-              placeholder="e.g. sB1xxxxxx02V"
-              left={<TextInput.Icon icon="movie-outline" />}
-              style={styles.spaced}
-            />
-
-            <TextInput
-              mode="outlined"
-              label="Duration (mm:ss or hh:mm:ss)"
-              value={durationText}
-              onChangeText={setDurationText}
-              placeholder="42:15"
-              left={<TextInput.Icon icon="clock-outline" />}
-              style={styles.spaced}
-            />
-            <HelperText type={durationText.length === 0 || duration !== null ? 'info' : 'error'} visible>
-              {durationText.length === 0
-                ? 'Used to show run time before playback.'
-                : duration !== null
-                  ? 'Looks good.'
-                  : 'Use mm:ss or hh:mm:ss.'}
-            </HelperText>
-
-            <TextInput
-              mode="outlined"
               label="Speaker (optional)"
               value={speaker}
               onChangeText={setSpeaker}
               left={<TextInput.Icon icon="account-voice" />}
+              style={styles.spaced}
             />
 
             <TextInput
@@ -223,8 +268,8 @@ export const UploadVideoScreen = ({ navigation }: OrganizationStackScreenProps<'
               <Switch value={isLive} onValueChange={setIsLive} color={theme.brand.accent} />
             </View>
 
-            <HelperText type="error" visible={Boolean(error)}>
-              {error ?? ' '}
+            <HelperText type="error" visible={Boolean(submitError)}>
+              {submitError ?? ' '}
             </HelperText>
 
             <Button
@@ -241,13 +286,79 @@ export const UploadVideoScreen = ({ navigation }: OrganizationStackScreenProps<'
             </Button>
 
             <Text variant="bodySmall" style={[styles.disclaimer, { color: theme.colors.outline }]}>
-              New videos always start as pending — they won&apos;t appear to viewers until a SetApart
-              reviewer approves them.
+              New videos always start as pending — they won&apos;t appear to viewers until a
+              SetApart reviewer approves them.
             </Text>
           </View>
         </Card>
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+};
+
+const UploadStatus = ({
+  fileName,
+  stage,
+  progress,
+  error,
+  result,
+  onRetry,
+}: {
+  fileName: string | null;
+  stage: UploadStage;
+  progress: number;
+  error: string | null;
+  result: MuxResult | null;
+  onRetry: () => void;
+}) => {
+  const theme = useAppTheme();
+
+  return (
+    <View style={styles.uploadStatus}>
+      {fileName ? (
+        <Text variant="bodyMedium" numberOfLines={1} style={{ color: theme.colors.onSurface }}>
+          {fileName}
+        </Text>
+      ) : null}
+
+      {stage === 'uploading' ? (
+        <>
+          <ProgressBar progress={progress} color={theme.brand.accent} style={styles.progressBar} />
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+            Uploading… {Math.round(progress * 100)}%
+          </Text>
+        </>
+      ) : null}
+
+      {stage === 'processing' ? (
+        <>
+          <ProgressBar indeterminate color={theme.brand.accent} style={styles.progressBar} />
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+            Mux is processing the video — this can take a few minutes for longer files.
+          </Text>
+        </>
+      ) : null}
+
+      {stage === 'ready' && result ? (
+        <View style={styles.readyRow}>
+          <Icon source="check-circle-outline" size={20} color={theme.brand.verified} />
+          <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+            Ready — {formatDuration(result.duration)} runtime
+          </Text>
+        </View>
+      ) : null}
+
+      {stage === 'error' ? (
+        <View style={styles.errorBlock}>
+          <Text variant="bodyMedium" style={{ color: theme.colors.error }}>
+            {error ?? 'Something went wrong.'}
+          </Text>
+          <Button mode="outlined" onPress={onRetry} style={styles.retryButton}>
+            Try again
+          </Button>
+        </View>
+      ) : null}
+    </View>
   );
 };
 
@@ -272,4 +383,9 @@ const styles = StyleSheet.create({
   button: { borderRadius: radius.pill, marginTop: spacing.sm },
   buttonContent: { paddingVertical: spacing.xs },
   disclaimer: { marginTop: spacing.sm },
+  uploadStatus: { gap: spacing.sm },
+  progressBar: { height: 6, borderRadius: radius.pill },
+  readyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  errorBlock: { gap: spacing.sm },
+  retryButton: { borderRadius: radius.pill, alignSelf: 'flex-start' },
 });

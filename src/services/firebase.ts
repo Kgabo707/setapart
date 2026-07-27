@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
 import { getReactNativePersistence, initializeAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getFunctions, type Functions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -47,6 +48,20 @@ export const getDb = (): Firestore => {
     db = getFirestore(getFirebaseApp());
   }
   return db;
+};
+
+let functionsClient: Functions | undefined;
+
+/**
+ * Cloud Functions client, used only by the Mux upload flow (`services/api/muxUpload.ts`).
+ * Everything else in this app talks to Firestore directly — this is the one place that
+ * needs a server in the loop, since the Mux API secret can never live in the app bundle.
+ */
+export const getFunctionsClient = (): Functions => {
+  if (!functionsClient) {
+    functionsClient = getFunctions(getFirebaseApp());
+  }
+  return functionsClient;
 };
 
 export const COLLECTIONS = {

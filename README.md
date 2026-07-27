@@ -8,9 +8,9 @@ studios. Built with Expo, React Native Paper (Material Design 3), Firebase and M
 
 This repository contains the full account/role model (viewer, organization, admin),
 theme, navigation shell, Home, Search, video player, My Library, the organization
-dashboard (uploads, content management, settings), and in-app moderation (organization
-applications, video submissions). The Mux direct-upload pipeline and push
-notifications are the remaining follow-ups — see [Mux](#mux).
+dashboard (uploads with a real Mux direct-upload pipeline, content management,
+settings), and in-app moderation (organization applications, video submissions). Push
+notifications for followed organizations are the remaining follow-up.
 
 ## Getting started
 
@@ -210,9 +210,39 @@ queries (`publishStatus` + the filtered field + `createdAt`).
 ## Mux
 
 `Video.videoAssetId` holds the public **playback ID**. `src/services/mux.ts` derives the
-HLS manifest (`https://stream.mux.com/{id}.m3u8`) and thumbnail URLs from it. The upload
-pipeline that mints those IDs is out of scope; assets are assumed to already exist in
-Firestore.
+HLS manifest (`https://stream.mux.com/{id}.m3u8`) and thumbnail URLs from it.
+
+### Upload pipeline
+
+The Mux API secret can never ship inside the Expo bundle, so upload creation and status
+polling are a small Cloud Functions project in `functions/`, not something the app talks
+to directly:
+
+1. **Upload Video** (organization role only) picks a file with `expo-file-system`'s
+   `File.pickFileAsync`, then calls the `createMuxUpload` function, which checks the
+   caller actually holds the `organization` role server-side before asking Mux for a
+   one-time-use upload URL.
+2. The file is PUT directly to that URL (`file.createUploadTask`, tracked for progress)
+   — the file bytes never pass through Firebase, only the URL request does.
+3. The client polls `getMuxUploadStatus` every few seconds until Mux reports the asset
+   `ready` with a playback ID and duration, or `errored`. `submitVideoForReview` is only
+   called once that resolves, so a video is never created with a placeholder or missing
+   `videoAssetId`.
+
+**Deploying the functions:**
+
+```bash
+cd functions
+npm install
+firebase functions:secrets:set MUX_TOKEN_ID
+firebase functions:secrets:set MUX_TOKEN_SECRET
+firebase deploy --only functions
+```
+
+The two secrets are a Mux **access token ID/secret** pair from the Mux dashboard
+(Settings → API Access Tokens), scoped to Mux Video with write access. Nothing else in
+this repo needs them — the client only ever calls the two functions above, never the
+Mux API directly.
 
 ## Project layout
 
