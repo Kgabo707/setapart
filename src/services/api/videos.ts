@@ -1,4 +1,5 @@
 import {
+  addDoc,
   collection,
   doc,
   getDoc,
@@ -7,13 +8,14 @@ import {
   limit as fbLimit,
   orderBy,
   query,
+  serverTimestamp,
   updateDoc,
   where,
   type DocumentData,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 
-import type { Organization, Video, VideoCategory, VideoWithOrg } from '../../types/models';
+import type { Organization, PublishStatus, Video, VideoCategory, VideoWithOrg } from '../../types/models';
 import { demoStore, hydrateDemoState } from '../demo/demoStore';
 import { COLLECTIONS, getDb, isFirebaseConfigured } from '../firebase';
 import { listOrganizationsByIds } from './organizations';
@@ -146,6 +148,94 @@ export const listVideosByOrganization = async (
     ),
   );
   return withOrganizations(snapshot.docs.map(toVideo));
+};
+
+/**
+ * Owner-facing listing: unlike every other query in this file, this one deliberately
+ * does NOT filter by `publishStatus` — an organization needs to see its own pending
+ * and rejected uploads alongside published ones. Never use this for viewer-facing reads.
+ */
+export const listAllVideosByOrganization = async (orgId: string, max = 100): Promise<Video[]> => {
+  if (!isFirebaseConfigured) {
+    await hydrateDemoState();
+    return demoStore
+      .getVideos()
+      .filter((video) => video.orgId === orgId)
+      .sort(byNewest)
+      .slice(0, max);
+  }
+
+  const snapshot = await getDocs(
+    query(
+      collection(getDb(), COLLECTIONS.videos),
+      where('orgId', '==', orgId),
+      orderBy('createdAt', 'desc'),
+      fbLimit(max),
+    ),
+  );
+  return snapshot.docs.map(toVideo);
+};
+
+/**
+ * Submits a new video for review. Always lands as `pending` regardless of caller
+ * input — publish status is only ever advanced by moderation, never by the submitter.
+ */
+export const submitVideoForReview = async (
+  orgId: string,
+  submission: {
+    title: string;
+    description: string;
+    category: VideoCategory;
+    tags: string[];
+    videoAssetId: string;
+    duration: number;
+    speaker?: string;
+    isLive?: boolean;
+  },
+): Promise<Video> => {
+  const draft = {
+    orgId,
+    title: submission.title,
+    description: submission.description,
+    category: submission.category,
+    tags: submission.tags,
+    videoAssetId: submission.videoAssetId,
+    duration: submission.duration,
+    speaker: submission.speaker,
+    isLive: submission.isLive ?? false,
+    publishStatus: 'pending' as const,
+    viewCount: 0,
+    isFeatured: false,
+  };
+
+  if (!isFirebaseConfigured) {
+    await hydrateDemoState();
+    return demoStore.addVideo({
+      ...draft,
+      id: `video-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  const ref = await addDoc(collection(getDb(), COLLECTIONS.videos), {
+    ...draft,
+    createdAt: serverTimestamp(),
+  });
+
+  return { ...draft, id: ref.id, createdAt: new Date().toISOString() };
+};
+
+/** Moderation action — out of scope UI-wise for this build, but the write path exists. */
+export const setVideoPublishStatus = async (
+  videoId: string,
+  publishStatus: PublishStatus,
+): Promise<void> => {
+  if (!isFirebaseConfigured) {
+    await hydrateDemoState();
+    demoStore.updateVideo(videoId, { publishStatus });
+    return;
+  }
+  await updateDoc(doc(getDb(), COLLECTIONS.videos, videoId), { publishStatus });
 };
 
 export const listVideosByIds = async (ids: string[]): Promise<VideoWithOrg[]> => {

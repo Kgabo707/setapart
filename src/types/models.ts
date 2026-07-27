@@ -121,6 +121,20 @@ export type Video = {
 /** A video joined with its (verified) publishing organization, ready for rendering. */
 export type VideoWithOrg = Video & { organization?: Organization };
 
+/** Fields an organization supplies when submitting a new video for review. */
+export type VideoSubmission = {
+  title: string;
+  description: string;
+  category: VideoCategory;
+  tags: string[];
+  /** Mux public playback ID — see `services/mux.ts`. Minted outside this app for now. */
+  videoAssetId: string;
+  /** Duration in seconds. */
+  duration: number;
+  speaker?: string;
+  isLive?: boolean;
+};
+
 export type OrganizationApplication = {
   name: string;
   description: string;

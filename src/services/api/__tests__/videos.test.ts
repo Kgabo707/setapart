@@ -1,11 +1,13 @@
 import { DEMO_VIDEOS } from '../../demo/demoContent';
 import {
   getPublishedVideo,
+  listAllVideosByOrganization,
   listFeaturedVideos,
   listTrendingVideos,
   listVideosByCategory,
   listVideosByIds,
   listVideosByOrganization,
+  submitVideoForReview,
 } from '../videos';
 
 /**
@@ -61,5 +63,48 @@ describe('viewer-facing video queries', () => {
     const [video] = await listVideosByOrganization('org-grace-chapel', 1);
 
     expect(video.organization?.name).toBe('Grace Chapel');
+  });
+});
+
+/**
+ * Unlike every viewer-facing query above, this one deliberately shows an organization
+ * its own pending/rejected work — the guarantee here is the opposite one: the owner
+ * must see every status, not just published.
+ */
+describe('owner-facing organization listing', () => {
+  it('includes pending and rejected videos alongside published ones', async () => {
+    const results = await listAllVideosByOrganization('org-grace-chapel', 50);
+
+    expect(results.some((video) => video.publishStatus === 'published')).toBe(true);
+    expect(results.some((video) => video.publishStatus === 'pending')).toBe(true);
+  });
+
+  it('only returns videos belonging to the requested organization', async () => {
+    const results = await listAllVideosByOrganization('org-anchor-youth', 50);
+
+    expect(results.every((video) => video.orgId === 'org-anchor-youth')).toBe(true);
+    expect(results.some((video) => video.publishStatus === 'rejected')).toBe(true);
+  });
+});
+
+describe('submitting a video for review', () => {
+  it('always lands as pending, regardless of caller input', async () => {
+    const created = await submitVideoForReview('org-grace-chapel', {
+      title: 'Test upload',
+      description: 'A video submitted through the test suite.',
+      category: 'sermons',
+      tags: ['test'],
+      videoAssetId: 'demo-playback-id',
+      duration: 600,
+    });
+
+    expect(created.publishStatus).toBe('pending');
+    expect(created.viewCount).toBe(0);
+
+    const ownerView = await listAllVideosByOrganization('org-grace-chapel', 100);
+    expect(ownerView.some((video) => video.id === created.id)).toBe(true);
+
+    const viewerView = await listVideosByOrganization('org-grace-chapel', 100);
+    expect(viewerView.some((video) => video.id === created.id)).toBe(false);
   });
 });

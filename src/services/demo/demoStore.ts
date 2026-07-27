@@ -72,6 +72,20 @@ export const demoStore = {
 
   getVideos: () => state.videos,
 
+  addVideo: (video: Video) => {
+    state.videos = [...state.videos, video];
+    persist();
+    return video;
+  },
+
+  updateVideo: (id: string, patch: Partial<Video>) => {
+    state.videos = state.videos.map((video) =>
+      video.id === id ? { ...video, ...patch } : video,
+    );
+    persist();
+    return state.videos.find((video) => video.id === id) ?? null;
+  },
+
   reset: () => {
     state = initialState();
     persist();
