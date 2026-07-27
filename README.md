@@ -205,7 +205,20 @@ than leaking it. The demo dataset intentionally contains one `pending` and one
 `rejected` video to keep that guarantee exercised.
 
 Firestore composite indexes are required for the category, featured and organization
-queries (`publishStatus` + the filtered field + `createdAt`).
+queries (`publishStatus` + the filtered field + `createdAt`) — they're declared in
+`firestore.indexes.json` and deploy with `firebase deploy --only firestore:indexes`
+rather than needing to be created ad hoc from a console error link.
+
+### Security rules
+
+`firestore.rules` enforces server-side the same invariants the app's own code tries to
+hold — a client-side `hasRole('admin')` check only hides a UI element, it doesn't stop
+a request, so the actual protection has to live here. In particular: a user can never
+set their own `roles` or `orgId`; only an existing admin can change either (on
+someone else's document) or change an organization's `verificationStatus`; an
+organization can only create videos in its own catalog, always as `pending`; and only
+an admin can move a video's `publishStatus` afterward. Deploy with
+`firebase deploy --only firestore:rules`.
 
 ## Mux
 

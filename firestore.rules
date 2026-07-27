@@ -1,0 +1,107 @@
+rules_version = '2';
+
+/**
+ * Server-side enforcement of the same invariants the app's own code tries to hold —
+ * written because none of this is real protection until it lives here. A client-side
+ * `hasRole('admin')` check only hides a button; it does not stop a request.
+ *
+ * Roles are additive and self-granting is never allowed:
+ *   - A user may update their own document, but never their own `roles` or `orgId`.
+ *   - Only an existing admin may change ANY user's `roles`/`orgId`, and only an existing
+ *     admin may change an organization's `verificationStatus`.
+ *   - A video may only be created by the organization it belongs to, and must always
+ *     be created with publishStatus == "pending" — never "published" directly.
+ *   - Only an existing admin may change a video's `publishStatus` after creation.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function myRoles() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? myProfile().get('roles', [])
+        : [];
+    }
+
+    function isAdmin() {
+      return isSignedIn() && ('admin' in myRoles());
+    }
+
+    function isOrganizationOwnerOf(orgId) {
+      return isSignedIn() && ('organization' in myRoles()) && myProfile().get('orgId', '') == orgId;
+    }
+
+    function unchanged(field) {
+      return request.resource.data.get(field, null) == resource.data.get(field, null);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+
+      // A brand-new account may only create itself as a plain viewer.
+      allow create: if isSignedIn() && request.auth.uid == userId
+        && request.resource.data.roles == ['viewer']
+        && !('orgId' in request.resource.data);
+
+      // Users manage their own favorites/history/etc, but can never touch their own
+      // roles or orgId — those two fields only ever change via an admin's write below.
+      allow update: if isSignedIn() && request.auth.uid == userId
+        && unchanged('roles') && unchanged('orgId');
+
+      // An admin approving an application (or, in principle, revoking a role) is the
+      // one path allowed to change roles/orgId — on someone else's document.
+      allow update: if isAdmin();
+
+      allow delete: if false;
+    }
+
+    match /organizations/{orgId} {
+      allow read: if true;
+
+      // Anyone signed in may apply, but only for themselves, only as pending, and
+      // never pre-verified.
+      allow create: if isSignedIn()
+        && request.resource.data.ownerUserId == request.auth.uid
+        && request.resource.data.verificationStatus == 'pending';
+
+      // The owner may edit their own org's profile fields, but never their own
+      // verification status — that decision belongs to moderation alone.
+      allow update: if isOrganizationOwnerOf(orgId) && unchanged('verificationStatus');
+
+      // Approving/rejecting an application.
+      allow update: if isAdmin();
+
+      allow delete: if false;
+    }
+
+    match /videos/{videoId} {
+      allow read: if true;
+
+      // An organization may only submit into its own catalog, and every submission
+      // must land as pending — publishing is never something the submitter controls.
+      allow create: if isOrganizationOwnerOf(request.resource.data.orgId)
+        && request.resource.data.publishStatus == 'pending';
+
+      // The owning organization may edit its own video's metadata (title, description,
+      // tags, etc.) but never its own publishStatus or viewCount.
+      allow update: if isOrganizationOwnerOf(resource.data.orgId)
+        && unchanged('publishStatus') && unchanged('viewCount') && unchanged('orgId');
+
+      // View-count increments: any signed-in viewer, restricted to that one field only.
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount']);
+
+      // Moderation decisions.
+      allow update: if isAdmin();
+
+      allow delete: if false;
+    }
+  }
+}
