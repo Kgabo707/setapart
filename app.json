@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "SetApart",
+    "slug": "setapart",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "scheme": "setapart",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A1F44"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.setapart.mobile"
+    },
+    "android": {
+      "package": "app.setapart.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#0A1F44",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-image",
+      [
+        "react-native-video",
+        {
+          "enableNotificationControls": true,
+          "enableBackgroundAudio": false
+        }
+      ],
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "PORTRAIT_UP"
+        }
+      ]
+    ]
+  }
+}
