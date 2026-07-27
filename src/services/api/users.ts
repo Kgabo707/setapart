@@ -82,6 +82,27 @@ const mutateDemoUser = async (userId: string, mutate: (user: AppUser) => AppUser
   if (current) demoStore.upsertUser(mutate(current));
 };
 
+/**
+ * Promotes a user to organization owner. Called only from the moderation approval
+ * flow (`services/api/organizations.ts#approveOrganization`) — never by the applicant
+ * themselves, which is what keeps `submitOrganizationApplication` from touching roles.
+ */
+export const grantOrganizationRole = async (userId: string, orgId: string): Promise<void> => {
+  if (!isFirebaseConfigured) {
+    await mutateDemoUser(userId, (user) => ({
+      ...user,
+      roles: user.roles.includes('organization') ? user.roles : [...user.roles, 'organization'],
+      orgId,
+    }));
+    return;
+  }
+
+  await updateDoc(doc(getDb(), COLLECTIONS.users, userId), {
+    roles: arrayUnion('organization'),
+    orgId,
+  });
+};
+
 export const setVideoFavorite = async (
   userId: string,
   videoId: string,

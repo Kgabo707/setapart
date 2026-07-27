@@ -13,6 +13,7 @@ import { VideoPlayerScreen } from '../screens/video/VideoPlayerScreen';
 import { navigationTheme, spacing, useAppTheme } from '../theme';
 import { AuthNavigator } from './AuthNavigator';
 import { MainTabNavigator } from './MainTabNavigator';
+import { ModerationNavigator } from './ModerationNavigator';
 import { OrganizationNavigator } from './OrganizationNavigator';
 import type { RootStackParamList } from './types';
 
@@ -74,6 +75,11 @@ export const RootNavigator = () => {
           <Stack.Screen
             name="OrganizationArea"
             component={OrganizationNavigator}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ModerationArea"
+            component={ModerationNavigator}
             options={{ headerShown: false }}
           />
         </Stack.Navigator>

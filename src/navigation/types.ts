@@ -29,6 +29,17 @@ export type OrganizationStackParamList = {
   OrganizationSettings: undefined;
 };
 
+/**
+ * The moderation context. Reached only from Profile, and only when `admin` is present
+ * in the signed-in user's roles — like the organization stack, an additional area
+ * pushed on top of the viewer tabs, never a replacement for them.
+ */
+export type ModerationStackParamList = {
+  Dashboard: undefined;
+  PendingOrganizations: undefined;
+  PendingVideos: undefined;
+};
+
 export type RootStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabParamList>;
   VideoPlayer: { videoId: string };
@@ -36,6 +47,7 @@ export type RootStackParamList = {
   OrganizationProfile: { orgId: string };
   RegisterOrganization: undefined;
   OrganizationArea: NavigatorScreenParams<OrganizationStackParamList>;
+  ModerationArea: NavigatorScreenParams<ModerationStackParamList>;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<
@@ -51,6 +63,12 @@ export type MainTabScreenProps<T extends keyof MainTabParamList> = CompositeScre
 export type OrganizationStackScreenProps<T extends keyof OrganizationStackParamList> =
   CompositeScreenProps<
     NativeStackScreenProps<OrganizationStackParamList, T>,
+    NativeStackScreenProps<RootStackParamList>
+  >;
+
+export type ModerationStackScreenProps<T extends keyof ModerationStackParamList> =
+  CompositeScreenProps<
+    NativeStackScreenProps<ModerationStackParamList, T>,
     NativeStackScreenProps<RootStackParamList>
   >;
 

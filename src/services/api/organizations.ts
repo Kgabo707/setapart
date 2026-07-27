@@ -7,6 +7,7 @@ import {
   limit as fbLimit,
   query,
   serverTimestamp,
+  updateDoc,
   where,
   type DocumentData,
   type QueryDocumentSnapshot,
@@ -15,6 +16,7 @@ import {
 import type { Organization, OrganizationApplication } from '../../types/models';
 import { demoStore, hydrateDemoState } from '../demo/demoStore';
 import { COLLECTIONS, getDb, isFirebaseConfigured } from '../firebase';
+import { grantOrganizationRole } from './users';
 
 const toOrganization = (snapshot: QueryDocumentSnapshot<DocumentData>): Organization => {
   const data = snapshot.data();
@@ -99,6 +101,64 @@ export const searchVerifiedOrganizations = async (
         org.name.toLowerCase().includes(needle) || org.description.toLowerCase().includes(needle),
     )
     .slice(0, max);
+};
+
+/**
+ * Moderation queue: every organization awaiting a decision. Distinct from every other
+ * query in this file, which either look up one organization or scope to a viewer's
+ * own application — this one is moderator-only.
+ */
+export const listPendingOrganizations = async (max = 50): Promise<Organization[]> => {
+  if (!isFirebaseConfigured) {
+    await hydrateDemoState();
+    return demoStore
+      .getOrganizations()
+      .filter((org) => org.verificationStatus === 'pending')
+      .slice(0, max);
+  }
+
+  const snapshot = await getDocs(
+    query(
+      collection(getDb(), COLLECTIONS.organizations),
+      where('verificationStatus', '==', 'pending'),
+      fbLimit(max),
+    ),
+  );
+  return snapshot.docs.map(toOrganization);
+};
+
+/**
+ * Approves an organization's application: flips its status to verified and grants the
+ * owner the `organization` role. These two writes are meant to happen together — an
+ * organization should never sit verified with an owner who still can't manage it.
+ */
+export const approveOrganization = async (orgId: string): Promise<void> => {
+  if (!isFirebaseConfigured) {
+    await hydrateDemoState();
+    const org = demoStore.updateOrganization(orgId, { verificationStatus: 'verified' });
+    if (org) await grantOrganizationRole(org.ownerUserId, org.id);
+    return;
+  }
+
+  const org = await getOrganization(orgId);
+  if (!org) return;
+  await updateDoc(doc(getDb(), COLLECTIONS.organizations, orgId), {
+    verificationStatus: 'verified',
+  });
+  await grantOrganizationRole(org.ownerUserId, orgId);
+};
+
+/** Rejects an application. Deliberately does not touch the applicant's roles. */
+export const rejectOrganization = async (orgId: string): Promise<void> => {
+  if (!isFirebaseConfigured) {
+    await hydrateDemoState();
+    demoStore.updateOrganization(orgId, { verificationStatus: 'rejected' });
+    return;
+  }
+
+  await updateDoc(doc(getDb(), COLLECTIONS.organizations, orgId), {
+    verificationStatus: 'rejected',
+  });
 };
 
 /**

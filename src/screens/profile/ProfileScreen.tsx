@@ -43,6 +43,7 @@ export const ProfileScreen = ({ navigation }: MainTabScreenProps<'Profile'>) => 
    * application entry point (or its pending state), never the dashboard.
    */
   const isOrganization = hasRole('organization');
+  const isAdmin = hasRole('admin');
   const applicationPending = !isOrganization && organization?.verificationStatus === 'pending';
   const applicationRejected = !isOrganization && organization?.verificationStatus === 'rejected';
   const canApply = !isOrganization && !organization;
@@ -92,8 +93,8 @@ export const ProfileScreen = ({ navigation }: MainTabScreenProps<'Profile'>) => 
               {user.roles.map((role) => (
                 <StatusPill
                   key={role}
-                  label={role === 'organization' ? 'Organization' : 'Viewer'}
-                  tone={role === 'organization' ? 'accent' : 'neutral'}
+                  label={role === 'organization' ? 'Organization' : role === 'admin' ? 'Admin' : 'Viewer'}
+                  tone={role === 'organization' || role === 'admin' ? 'accent' : 'neutral'}
                   onNavy
                 />
               ))}
@@ -226,6 +227,27 @@ export const ProfileScreen = ({ navigation }: MainTabScreenProps<'Profile'>) => 
           </List.Section>
 
           <Divider style={{ backgroundColor: theme.brand.divider }} />
+
+          {isAdmin ? (
+            <>
+              <List.Section>
+                <List.Subheader style={{ color: theme.colors.onSurfaceVariant }}>
+                  Moderation
+                </List.Subheader>
+                <List.Item
+                  title="Review queue"
+                  description="Organization applications and video submissions"
+                  left={(props) => (
+                    <List.Icon {...props} icon="shield-check-outline" color={theme.brand.accent} />
+                  )}
+                  right={(props) => <List.Icon {...props} icon="chevron-right" />}
+                  onPress={() => navigation.navigate('ModerationArea', { screen: 'Dashboard' })}
+                />
+              </List.Section>
+
+              <Divider style={{ backgroundColor: theme.brand.divider }} />
+            </>
+          ) : null}
 
           <List.Section>
             <List.Subheader style={{ color: theme.colors.onSurfaceVariant }}>

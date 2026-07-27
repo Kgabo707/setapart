@@ -70,6 +70,14 @@ export const demoStore = {
     return organization;
   },
 
+  updateOrganization: (id: string, patch: Partial<Organization>) => {
+    state.organizations = state.organizations.map((org) =>
+      org.id === id ? { ...org, ...patch } : org,
+    );
+    persist();
+    return state.organizations.find((org) => org.id === id) ?? null;
+  },
+
   getVideos: () => state.videos,
 
   addVideo: (video: Video) => {

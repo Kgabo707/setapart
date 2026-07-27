@@ -3,10 +3,12 @@ import {
   getPublishedVideo,
   listAllVideosByOrganization,
   listFeaturedVideos,
+  listPendingVideos,
   listTrendingVideos,
   listVideosByCategory,
   listVideosByIds,
   listVideosByOrganization,
+  setVideoPublishStatus,
   submitVideoForReview,
 } from '../videos';
 
@@ -106,5 +108,53 @@ describe('submitting a video for review', () => {
 
     const viewerView = await listVideosByOrganization('org-grace-chapel', 100);
     expect(viewerView.some((video) => video.id === created.id)).toBe(false);
+  });
+});
+
+/**
+ * The moderation queue and the decision that clears it — this is the one place
+ * `publishStatus` is meant to change after submission.
+ */
+describe('moderation queue', () => {
+  it('lists every pending video across all organizations', async () => {
+    const pending = await listPendingVideos(200);
+
+    expect(pending.length).toBeGreaterThan(0);
+    expect(pending.every((video) => video.publishStatus === 'pending')).toBe(true);
+  });
+
+  it('approving a video makes it appear in viewer-facing queries', async () => {
+    const created = await submitVideoForReview('org-grace-chapel', {
+      title: 'Moderation test upload',
+      description: 'A video submitted to test the approval path.',
+      category: 'sermons',
+      tags: [],
+      videoAssetId: 'demo-playback-id',
+      duration: 300,
+    });
+
+    await expect(getPublishedVideo(created.id)).resolves.toBeNull();
+
+    await setVideoPublishStatus(created.id, 'published');
+
+    const viewerView = await getPublishedVideo(created.id);
+    expect(viewerView?.id).toBe(created.id);
+  });
+
+  it('rejecting a video keeps it out of viewer-facing queries', async () => {
+    const created = await submitVideoForReview('org-grace-chapel', {
+      title: 'Moderation test rejection',
+      description: 'A video submitted to test the rejection path.',
+      category: 'sermons',
+      tags: [],
+      videoAssetId: 'demo-playback-id',
+      duration: 300,
+    });
+
+    await setVideoPublishStatus(created.id, 'rejected');
+
+    await expect(getPublishedVideo(created.id)).resolves.toBeNull();
+    const ownerView = await listAllVideosByOrganization('org-grace-chapel', 100);
+    expect(ownerView.find((video) => video.id === created.id)?.publishStatus).toBe('rejected');
   });
 });

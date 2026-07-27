@@ -6,9 +6,11 @@ A video streaming app for Christian content — sermons, worship, teaching, yout
 testimonies, films and devotionals — published by verified churches, ministries and
 studios. Built with Expo, React Native Paper (Material Design 3), Firebase and Mux.
 
-This repository currently contains the structural backbone: theme, navigation shell,
-role-based account model, Home and the video player. Search, My Library and the full
-organization dashboard are follow-ups.
+This repository contains the full account/role model (viewer, organization, admin),
+theme, navigation shell, Home, Search, video player, My Library, the organization
+dashboard (uploads, content management, settings), and in-app moderation (organization
+applications, video submissions). The Mux direct-upload pipeline and push
+notifications are the remaining follow-ups — see [Mux](#mux).
 
 ## Getting started
 
@@ -80,6 +82,26 @@ the dashboard. To walk the whole flow yourself:
 3. Profile now shows the **Organization Dashboard** entry, with the viewer tabs still
    underneath.
 
+### Trying moderation
+
+Moderation (`admin` role) has the same bootstrap problem as the organization role — no
+in-app path grants it, by design, since it should never be self-service. To reach it in
+demo mode:
+
+```js
+const key = 'setapart.demo.state.v1';
+const state = JSON.parse(localStorage.getItem(key));
+const currentUser = state.users[state.signedInUserId];
+currentUser.roles = Array.from(new Set([...currentUser.roles, 'admin']));
+localStorage.setItem(key, JSON.stringify(state));
+location.reload();
+```
+
+Against a real project, add `'admin'` to the user's `roles` array in the Firestore
+console. Profile then shows a **Review queue** entry leading to the organization
+applications and video submissions lists, where approving or rejecting writes
+immediately.
+
 ## Design system
 
 Material Design 3 via `react-native-paper`, with a navy-and-white brand where red is an
@@ -101,21 +123,25 @@ verification colours).
 
 ## Account and role model
 
-A single account can hold both roles. `roles` is additive, never a switch:
+A single account can hold multiple roles. `roles` is additive, never a switch:
 
 1. Every signup creates `roles: ["viewer"]`.
 2. A viewer submits an application from **Profile → Register your organization**. This
    writes an `organizations` document with `verificationStatus: "pending"` and
    **deliberately does not touch `roles` or `orgId`**.
-3. A super-admin approves it (out of scope for this build — assume the Firestore
-   console): flip `verificationStatus` to `verified`, push `"organization"` onto the
-   user's `roles`, and set `orgId`.
+3. A moderator (an account with the `admin` role) approves or rejects it from
+   **Profile → Review queue**: approving flips `verificationStatus` to `verified` and
+   pushes `"organization"` onto the applicant's `roles`, in the same action
+   (`approveOrganization` in `services/api/organizations.ts`); rejecting only changes
+   `verificationStatus`.
 4. The **Organization Dashboard** entry then appears in Profile. It is the only place
-   the app changes context.
+   the app changes context for an organization owner.
 
 An organization owner still gets the normal viewer bottom tabs as their default view.
 The dashboard is a stack pushed on top, so backing out returns them exactly where they
-were.
+were. The **admin** role works the same way — no in-app path grants it (see
+[Trying moderation](#trying-moderation)), and it only unlocks the **Review queue**
+entry, never removes the viewer tabs underneath.
 
 ## Navigation
 
@@ -132,11 +158,15 @@ RootNavigator
     ├── CategoryFeed
     ├── OrganizationProfile
     ├── RegisterOrganization
-    └── OrganizationArea (stack)          ← only reachable from Profile, role-gated
+    ├── OrganizationArea (stack)          ← only reachable from Profile, role-gated
+    │   ├── Dashboard
+    │   ├── ManageVideos
+    │   ├── UploadVideo
+    │   └── OrganizationSettings
+    └── ModerationArea (stack)            ← only reachable from Profile, role-gated
         ├── Dashboard
-        ├── ManageVideos
-        ├── UploadVideo
-        └── OrganizationSettings
+        ├── PendingOrganizations
+        └── PendingVideos
 ```
 
 ## Data model (Firestore)
@@ -147,7 +177,7 @@ RootNavigator
 | --- | --- | --- |
 | `displayName` | string | |
 | `email` | string | |
-| `roles` | `("viewer" \| "organization")[]` | Starts as `["viewer"]` |
+| `roles` | `("viewer" \| "organization" \| "admin")[]` | Starts as `["viewer"]` |
 | `orgId` | string? | Present only once verified |
 | `favoriteVideoIds` | string[] | Backs the player's **Like** action |
 | `watchLaterVideoIds` | string[] | Backs the player's **Save** action |

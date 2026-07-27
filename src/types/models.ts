@@ -1,5 +1,5 @@
 /** Roles are additive: an approved organization owner keeps `viewer` alongside it. */
-export type UserRole = 'viewer' | 'organization';
+export type UserRole = 'viewer' | 'organization' | 'admin';
 
 export type VerificationStatus = 'pending' | 'verified' | 'rejected';
 

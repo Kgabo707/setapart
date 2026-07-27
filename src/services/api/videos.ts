@@ -158,6 +158,33 @@ export const listVideosByOrganization = async (
 };
 
 /**
+ * Moderation queue: every video awaiting a decision, across all organizations.
+ * Moderator-only — distinct from `listAllVideosByOrganization`, which scopes to one
+ * organization's own view of its own content.
+ */
+export const listPendingVideos = async (max = 50): Promise<VideoWithOrg[]> => {
+  if (!isFirebaseConfigured) {
+    await hydrateDemoState();
+    const pending = demoStore
+      .getVideos()
+      .filter((video) => video.publishStatus === 'pending')
+      .sort(byNewest)
+      .slice(0, max);
+    return withOrganizations(pending);
+  }
+
+  const snapshot = await getDocs(
+    query(
+      collection(getDb(), COLLECTIONS.videos),
+      where('publishStatus', '==', 'pending'),
+      orderBy('createdAt', 'desc'),
+      fbLimit(max),
+    ),
+  );
+  return withOrganizations(snapshot.docs.map(toVideo));
+};
+
+/**
  * Owner-facing listing: unlike every other query in this file, this one deliberately
  * does NOT filter by `publishStatus` — an organization needs to see its own pending
  * and rejected uploads alongside published ones. Never use this for viewer-facing reads.
