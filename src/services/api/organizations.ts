@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 
 import type { Organization, OrganizationApplication } from '../../types/models';
+import { omitUndefined } from '../../utils/firestore';
 import { demoStore, hydrateDemoState } from '../demo/demoStore';
 import { COLLECTIONS, getDb, isFirebaseConfigured } from '../firebase';
 import { grantOrganizationRole } from './users';
@@ -207,10 +208,13 @@ export const submitOrganizationApplication = async (
     });
   }
 
-  const ref = await addDoc(collection(getDb(), COLLECTIONS.organizations), {
-    ...draft,
-    createdAt: serverTimestamp(),
-  });
+  const ref = await addDoc(
+    collection(getDb(), COLLECTIONS.organizations),
+    omitUndefined({
+      ...draft,
+      createdAt: serverTimestamp(),
+    }),
+  );
 
   return { ...draft, id: ref.id, createdAt: new Date().toISOString() };
 };

@@ -23,6 +23,7 @@ import {
   type VideoCategory,
   type VideoWithOrg,
 } from '../../types/models';
+import { omitUndefined } from '../../utils/firestore';
 import { demoStore, hydrateDemoState } from '../demo/demoStore';
 import { COLLECTIONS, getDb, isFirebaseConfigured } from '../firebase';
 import { listOrganizationsByIds } from './organizations';
@@ -251,10 +252,13 @@ export const submitVideoForReview = async (
     });
   }
 
-  const ref = await addDoc(collection(getDb(), COLLECTIONS.videos), {
-    ...draft,
-    createdAt: serverTimestamp(),
-  });
+  const ref = await addDoc(
+    collection(getDb(), COLLECTIONS.videos),
+    omitUndefined({
+      ...draft,
+      createdAt: serverTimestamp(),
+    }),
+  );
 
   return { ...draft, id: ref.id, createdAt: new Date().toISOString() };
 };
