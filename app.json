@@ -53,6 +53,17 @@
           "initialOrientation": "PORTRAIT_UP"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "8824188c-957e-4f20-9d91-f96876ce0098"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8824188c-957e-4f20-9d91-f96876ce0098"
+    }
   }
 }

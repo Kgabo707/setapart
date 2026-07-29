@@ -19,6 +19,7 @@
     "expo-linear-gradient": "~57.0.1",
     "expo-screen-orientation": "~57.0.1",
     "expo-status-bar": "~57.0.1",
+    "expo-updates": "~57.0.10",
     "firebase": "^12.16.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
