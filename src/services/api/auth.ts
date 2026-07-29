@@ -63,13 +63,24 @@ export const observeSession = (onChange: SessionListener): (() => void) => {
       return;
     }
     const identity = fromFirebaseUser(user);
-    const profile =
-      (await getUserProfile(identity.uid)) ??
-      (await createUserProfile(identity.uid, {
-        displayName: identity.displayName,
-        email: identity.email,
-      }));
-    onChange({ identity, profile });
+    try {
+      const profile =
+        (await getUserProfile(identity.uid)) ??
+        (await createUserProfile(identity.uid, {
+          displayName: identity.displayName,
+          email: identity.email,
+        }));
+      onChange({ identity, profile });
+    } catch (error) {
+      // A Firebase Auth session can persist on-device even when Firestore rejects the
+      // profile read/write that's supposed to follow it (rules not yet deployed, a
+      // network blip, etc). Without this guard that failure was an unhandled rejection
+      // that crashed the app — and since the Auth session survives restarts, it crashed
+      // again on every subsequent launch. Falling back to signed-out is recoverable;
+      // a crash loop is not.
+      console.error('Could not load or create the profile for a signed-in user.', error);
+      onChange(null);
+    }
   });
 };
 
