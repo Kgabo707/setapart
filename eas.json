@@ -1,0 +1,53 @@
+{
+  "cli": {
+    "version": ">= 13.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyA5TUoExrMpIL-ozIG7P09RVAMbEo9D0G0",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "setapart-5d777.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "setapart-5d777",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "setapart-5d777.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "179125193998",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:179125193998:web:71827c10054f801ee95b5f"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyA5TUoExrMpIL-ozIG7P09RVAMbEo9D0G0",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "setapart-5d777.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "setapart-5d777",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "setapart-5d777.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "179125193998",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:179125193998:web:71827c10054f801ee95b5f"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyA5TUoExrMpIL-ozIG7P09RVAMbEo9D0G0",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "setapart-5d777.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "setapart-5d777",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "setapart-5d777.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "179125193998",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:179125193998:web:71827c10054f801ee95b5f"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
