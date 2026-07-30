@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
-import { getReactNativePersistence, initializeAuth, type Auth } from 'firebase/auth';
+import { getAuth, getReactNativePersistence, initializeAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getFunctions, type Functions } from 'firebase/functions';
+import { Platform } from 'react-native';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -36,9 +37,16 @@ const getFirebaseApp = (): FirebaseApp => {
 
 export const getFirebaseAuth = (): Auth => {
   if (!auth) {
-    auth = initializeAuth(getFirebaseApp(), {
-      persistence: getReactNativePersistence(AsyncStorage),
-    });
+    // `getReactNativePersistence` is a React-Native-only export — the same
+    // `firebase/auth` import resolves to a different bundle on web, one that simply
+    // doesn't have it, so calling it there throws "not a function" immediately on
+    // app boot. Web gets its own default (IndexedDB-backed) persistence via getAuth().
+    auth =
+      Platform.OS === 'web'
+        ? getAuth(getFirebaseApp())
+        : initializeAuth(getFirebaseApp(), {
+            persistence: getReactNativePersistence(AsyncStorage),
+          });
   }
   return auth;
 };
