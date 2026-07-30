@@ -38,6 +38,7 @@ export type ModerationStackParamList = {
   Dashboard: undefined;
   PendingOrganizations: undefined;
   PendingVideos: undefined;
+  ReportedContent: undefined;
 };
 
 export type RootStackParamList = {

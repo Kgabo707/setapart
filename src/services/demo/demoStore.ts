@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { AppUser, Organization, Video } from '../../types/models';
+import type { AppUser, Organization, Report, Video } from '../../types/models';
 import { DEMO_ORGANIZATIONS, DEMO_USER, DEMO_VIDEOS } from './demoContent';
 
 const STORAGE_KEY = 'setapart.demo.state.v1';
@@ -9,6 +9,7 @@ type DemoState = {
   users: Record<string, AppUser>;
   organizations: Organization[];
   videos: Video[];
+  reports: Report[];
   signedInUserId: string | null;
 };
 
@@ -16,6 +17,7 @@ const initialState = (): DemoState => ({
   users: { [DEMO_USER.id]: DEMO_USER },
   organizations: [...DEMO_ORGANIZATIONS],
   videos: [...DEMO_VIDEOS],
+  reports: [],
   signedInUserId: null,
 });
 
@@ -79,6 +81,22 @@ export const demoStore = {
   },
 
   getVideos: () => state.videos,
+
+  getReports: () => state.reports,
+
+  addReport: (report: Report) => {
+    state.reports = [...state.reports, report];
+    persist();
+    return report;
+  },
+
+  updateReport: (id: string, patch: Partial<Report>) => {
+    state.reports = state.reports.map((report) =>
+      report.id === id ? { ...report, ...patch } : report,
+    );
+    persist();
+    return state.reports.find((report) => report.id === id) ?? null;
+  },
 
   addVideo: (video: Video) => {
     state.videos = [...state.videos, video];

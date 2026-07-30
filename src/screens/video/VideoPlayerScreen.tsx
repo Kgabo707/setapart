@@ -3,7 +3,19 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { Button, Divider, Icon, Snackbar, Text, TouchableRipple } from 'react-native-paper';
+import {
+  Button,
+  Dialog,
+  Divider,
+  HelperText,
+  Icon,
+  Portal,
+  RadioButton,
+  Snackbar,
+  Text,
+  TextInput,
+  TouchableRipple,
+} from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { OrganizationAvatar } from '../../components/common/OrganizationAvatar';
@@ -22,9 +34,15 @@ import {
   listVideosByOrganization,
   recordVideoView,
 } from '../../services/api/videos';
+import { submitReport } from '../../services/api/reports';
 import { muxStreamUrl, muxThumbnailUrl } from '../../services/mux';
 import { radius, spacing, useAppTheme } from '../../theme';
-import { CATEGORY_LABELS, type VideoWithOrg } from '../../types/models';
+import {
+  CATEGORY_LABELS,
+  REPORT_REASON_LABELS,
+  type ReportReason,
+  type VideoWithOrg,
+} from '../../types/models';
 import { formatRelativeDate, formatViews } from '../../utils/format';
 
 const PROGRESS_SAVE_INTERVAL_MS = 10_000;
@@ -54,6 +72,10 @@ export const VideoPlayerScreen = ({ route, navigation }: RootStackScreenProps<'V
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<ReportReason>('inappropriate');
+  const [reportDetails, setReportDetails] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
   const lastSavedAt = useRef(0);
 
   const loadVideo = useCallback(async (): Promise<PlayerData> => {
@@ -131,6 +153,29 @@ export const VideoPlayerScreen = ({ route, navigation }: RootStackScreenProps<'V
       setSnackbar('Link copied to clipboard');
     }
   }, [data]);
+
+  const onSubmitReport = useCallback(async () => {
+    if (!data || !user) return;
+    setReportSubmitting(true);
+    try {
+      await submitReport({
+        reporterId: user.id,
+        videoId: data.video.id,
+        videoTitle: data.video.title,
+        orgId: data.video.orgId,
+        reason: reportReason,
+        details: reportDetails.trim() || undefined,
+      });
+      setReportOpen(false);
+      setReportDetails('');
+      setReportReason('inappropriate');
+      setSnackbar("Thanks — we'll take a look.");
+    } catch {
+      setSnackbar('Could not submit the report. Try again.');
+    } finally {
+      setReportSubmitting(false);
+    }
+  }, [data, user, reportReason, reportDetails]);
 
   if (loading && !data) {
     return (
@@ -217,6 +262,7 @@ export const VideoPlayerScreen = ({ route, navigation }: RootStackScreenProps<'V
               setSnackbar(saved ? 'Removed from My Library' : 'Saved to My Library');
             }}
             onShare={onShare}
+            onReport={() => setReportOpen(true)}
             disabled={!user}
           />
 
@@ -318,6 +364,54 @@ export const VideoPlayerScreen = ({ route, navigation }: RootStackScreenProps<'V
         </ScrollView>
       )}
 
+      <Portal>
+        <Dialog
+          visible={reportOpen}
+          onDismiss={() => setReportOpen(false)}
+          style={{ backgroundColor: theme.colors.surface, borderRadius: radius.lg }}
+        >
+          <Dialog.Title>Report this video</Dialog.Title>
+          <Dialog.Content style={styles.reportContent}>
+            <RadioButton.Group
+              onValueChange={(value) => setReportReason(value as ReportReason)}
+              value={reportReason}
+            >
+              {(Object.entries(REPORT_REASON_LABELS) as [ReportReason, string][]).map(
+                ([value, label]) => (
+                  <RadioButton.Item
+                    key={value}
+                    label={label}
+                    value={value}
+                    labelStyle={{ color: theme.colors.onSurface }}
+                    color={theme.brand.accent}
+                  />
+                ),
+              )}
+            </RadioButton.Group>
+
+            <TextInput
+              mode="outlined"
+              label="Anything else? (optional)"
+              value={reportDetails}
+              onChangeText={setReportDetails}
+              multiline
+              numberOfLines={3}
+            />
+            <HelperText type="info" visible>
+              Reports go to the SetApart review team, not the organization.
+            </HelperText>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setReportOpen(false)} disabled={reportSubmitting}>
+              Cancel
+            </Button>
+            <Button onPress={onSubmitReport} loading={reportSubmitting} disabled={reportSubmitting}>
+              Submit
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
       <Snackbar
         visible={Boolean(snackbar)}
         onDismiss={() => setSnackbar(null)}
@@ -336,11 +430,12 @@ type ActionRowProps = {
   onLike: () => void;
   onSave: () => void;
   onShare: () => void;
+  onReport: () => void;
   disabled?: boolean;
 };
 
 /** Material icon-button row: the primary viewer actions on a video. */
-const ActionRow = ({ liked, saved, onLike, onSave, onShare, disabled }: ActionRowProps) => {
+const ActionRow = ({ liked, saved, onLike, onSave, onShare, onReport, disabled }: ActionRowProps) => {
   const theme = useAppTheme();
 
   const actions = [
@@ -359,6 +454,7 @@ const ActionRow = ({ liked, saved, onLike, onSave, onShare, disabled }: ActionRo
       active: saved,
     },
     { key: 'share', icon: 'share-variant-outline', label: 'Share', onPress: onShare, active: false },
+    { key: 'report', icon: 'flag-outline', label: 'Report', onPress: onReport, active: false },
   ];
 
   return (
@@ -393,6 +489,7 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   center: { justifyContent: 'center' },
   scroll: { paddingTop: spacing.lg },
+  reportContent: { gap: spacing.sm },
   header: { paddingHorizontal: spacing.lg, gap: spacing.sm },
   pills: { flexDirection: 'row', gap: spacing.sm },
   actionRow: {

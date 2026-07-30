@@ -76,4 +76,5 @@ export const COLLECTIONS = {
   users: 'users',
   organizations: 'organizations',
   videos: 'videos',
+  reports: 'reports',
 } as const;

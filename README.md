@@ -9,7 +9,8 @@ studios. Built with Expo, React Native Paper (Material Design 3), Firebase and M
 This repository contains the full account/role model (viewer, organization, admin),
 theme, navigation shell, Home, Search, video player, My Library, the organization
 dashboard (uploads with a real Mux direct-upload pipeline, content management,
-settings), and in-app moderation (organization applications, video submissions). Push
+settings), and in-app moderation (organization applications, video submissions,
+viewer-submitted reports on published content). Push
 notifications for followed organizations are the remaining follow-up.
 
 ## Getting started
@@ -166,7 +167,8 @@ RootNavigator
     └── ModerationArea (stack)            ← only reachable from Profile, role-gated
         ├── Dashboard
         ├── PendingOrganizations
-        └── PendingVideos
+        ├── PendingVideos
+        └── ReportedContent
 ```
 
 ## Data model (Firestore)
@@ -219,6 +221,11 @@ someone else's document) or change an organization's `verificationStatus`; an
 organization can only create videos in its own catalog, always as `pending`; and only
 an admin can move a video's `publishStatus` afterward. Deploy with
 `firebase deploy --only firestore:rules`.
+
+Reports work the same way: any signed-in viewer can create one, always attributed to
+themselves and always `open`, but the queue itself isn't publicly readable — only an
+admin (or the reporter, for their own report) can read it, and only an admin can
+resolve one.
 
 ## Mux
 

@@ -121,6 +121,36 @@ export type Video = {
 /** A video joined with its (verified) publishing organization, ready for rendering. */
 export type VideoWithOrg = Video & { organization?: Organization };
 
+export type ReportReason =
+  | 'inappropriate'
+  | 'spam'
+  | 'copyright'
+  | 'not_christian'
+  | 'other';
+
+export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
+  inappropriate: 'Inappropriate or offensive',
+  spam: 'Spam or misleading',
+  copyright: "Copyright — isn't theirs to post",
+  not_christian: "Doesn't belong on a Christian platform",
+  other: 'Something else',
+};
+
+export type ReportStatus = 'open' | 'resolved';
+
+/** A viewer's report against a published video, reviewed in the moderation queue. */
+export type Report = {
+  id: string;
+  videoId: string;
+  videoTitle: string;
+  orgId: string;
+  reporterId: string;
+  reason: ReportReason;
+  details?: string;
+  status: ReportStatus;
+  createdAt: string;
+};
+
 /** Fields an organization supplies when submitting a new video for review. */
 export type VideoSubmission = {
   title: string;

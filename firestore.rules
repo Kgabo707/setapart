@@ -103,5 +103,23 @@ service cloud.firestore {
 
       allow delete: if false;
     }
+
+    match /reports/{reportId} {
+      // Reports aren't public — an organization should never be able to browse who
+      // reported it, and a viewer has no in-app reason to read the queue back.
+      allow read: if isAdmin() || (isSignedIn() && resource.data.reporterId == request.auth.uid);
+
+      // Anyone signed in can report a video, only ever attributed to themselves and
+      // always landing open — resolving one is a moderation action, not the
+      // reporter's to set.
+      allow create: if isSignedIn()
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.status == 'open';
+
+      // Resolving a report.
+      allow update: if isAdmin();
+
+      allow delete: if false;
+    }
   }
 }

@@ -5,6 +5,7 @@ import { useAppTheme } from '../theme';
 import { ModerationDashboardScreen } from '../screens/moderation/ModerationDashboardScreen';
 import { PendingOrganizationsScreen } from '../screens/moderation/PendingOrganizationsScreen';
 import { PendingVideosScreen } from '../screens/moderation/PendingVideosScreen';
+import { ReportedContentScreen } from '../screens/moderation/ReportedContentScreen';
 import type { ModerationStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<ModerationStackParamList>();
@@ -41,6 +42,11 @@ export const ModerationNavigator = () => {
         name="PendingVideos"
         component={PendingVideosScreen}
         options={{ title: 'Video submissions' }}
+      />
+      <Stack.Screen
+        name="ReportedContent"
+        component={ReportedContentScreen}
+        options={{ title: 'Reported content' }}
       />
     </Stack.Navigator>
   );

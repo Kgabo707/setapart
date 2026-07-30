@@ -6,12 +6,13 @@ import { LoadingState } from '../../components/common/StateViews';
 import { useAsyncData } from '../../hooks/useAsyncData';
 import type { ModerationStackScreenProps } from '../../navigation/types';
 import { listPendingOrganizations } from '../../services/api/organizations';
+import { listOpenReports } from '../../services/api/reports';
 import { listPendingVideos } from '../../services/api/videos';
 import { elevation, radius, spacing, useAppTheme } from '../../theme';
 
 /**
  * Entry point to the moderation context. Deliberately thin — this is the queue-count
- * overview, the actual review actions live on the two list screens it links into.
+ * overview, the actual review actions live on the list screens it links into.
  */
 export const ModerationDashboardScreen = ({
   navigation,
@@ -19,14 +20,15 @@ export const ModerationDashboardScreen = ({
   const theme = useAppTheme();
 
   const loadCounts = useCallback(
-    async () => Promise.all([listPendingOrganizations(200), listPendingVideos(200)]),
+    async () =>
+      Promise.all([listPendingOrganizations(200), listPendingVideos(200), listOpenReports(200)]),
     [],
   );
   const { data, loading, refreshing, refresh } = useAsyncData(loadCounts);
 
   if (loading && !data) return <LoadingState label="Loading the review queue…" />;
 
-  const [organizations, videos] = data ?? [[], []];
+  const [organizations, videos, reports] = data ?? [[], [], []];
 
   return (
     <ScrollView
@@ -44,6 +46,7 @@ export const ModerationDashboardScreen = ({
       <View style={styles.metrics}>
         <Metric icon="domain" value={organizations.length} label="Organizations" />
         <Metric icon="video-outline" value={videos.length} label="Videos" />
+        <Metric icon="flag-outline" value={reports.length} label="Reports" />
       </View>
 
       <Card
@@ -73,6 +76,15 @@ export const ModerationDashboardScreen = ({
             )}
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => navigation.navigate('PendingVideos')}
+          />
+          <List.Item
+            title="Reported content"
+            description={
+              reports.length === 0 ? 'Nothing reported' : `${reports.length} open report${reports.length === 1 ? '' : 's'}`
+            }
+            left={(props) => <List.Icon {...props} icon="flag-outline" color={theme.colors.error} />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => navigation.navigate('ReportedContent')}
           />
         </List.Section>
       </Card>
