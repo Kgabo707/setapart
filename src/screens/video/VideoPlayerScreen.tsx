@@ -79,10 +79,19 @@ export const VideoPlayerScreen = ({ route, navigation }: RootStackScreenProps<'V
     if (data) void recordVideoView(data.video.id).catch(() => undefined);
   }, [data]);
 
+  /**
+   * Orientation locking isn't supported everywhere (web, some devices) — it's a
+   * nice-to-have for fullscreen playback, not something that should surface as an
+   * unhandled rejection when it's simply unavailable.
+   */
+  const lockOrientation = useCallback((orientation: ScreenOrientation.OrientationLock) => {
+    return ScreenOrientation.lockAsync(orientation).catch(() => undefined);
+  }, []);
+
   const exitFullscreen = useCallback(async () => {
     setIsFullscreen(false);
-    await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-  }, []);
+    await lockOrientation(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+  }, [lockOrientation]);
 
   const toggleFullscreen = useCallback(async () => {
     if (isFullscreen) {
@@ -90,15 +99,15 @@ export const VideoPlayerScreen = ({ route, navigation }: RootStackScreenProps<'V
       return;
     }
     setIsFullscreen(true);
-    await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-  }, [exitFullscreen, isFullscreen]);
+    await lockOrientation(ScreenOrientation.OrientationLock.LANDSCAPE);
+  }, [exitFullscreen, isFullscreen, lockOrientation]);
 
   // Never strand the device in landscape when the viewer navigates away.
   useEffect(
     () => () => {
-      void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      void lockOrientation(ScreenOrientation.OrientationLock.PORTRAIT_UP);
     },
-    [],
+    [lockOrientation],
   );
 
   const onProgress = useCallback(
