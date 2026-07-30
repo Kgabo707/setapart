@@ -99,4 +99,4 @@ change means you accept the revised policy.
 If you have questions about this policy or want to exercise your data
 rights, contact us at:
 
-**Kgabo707@gmail.com**
+**info@premiato.co.za**
