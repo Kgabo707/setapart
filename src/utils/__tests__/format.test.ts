@@ -39,6 +39,17 @@ describe('formatRelativeDate', () => {
     ['2026-06-01T11:00:00.000Z', '1 hour ago'],
     ['2026-05-31T12:00:00.000Z', 'yesterday'],
     ['2026-05-04T12:00:00.000Z', '4 weeks ago'],
+    // Future dates and the month/year auto-label branches — added when this function
+    // was rewritten to stop depending on Intl.RelativeTimeFormat (not reliably
+    // available in React Native's JS engine, unlike web/Node), since those are the
+    // branches a missing-API crash could hide in without being exercised by a test.
+    ['2026-06-01T13:00:00.000Z', 'in 1 hour'],
+    ['2026-06-02T12:00:00.000Z', 'tomorrow'],
+    ['2026-07-01T12:00:00.000Z', 'next month'],
+    ['2026-05-01T12:00:00.000Z', 'last month'],
+    ['2027-06-01T12:00:00.000Z', 'next year'],
+    ['2025-06-01T12:00:00.000Z', 'last year'],
+    ['2020-06-01T12:00:00.000Z', '6 years ago'],
   ])('renders %s as %s', (iso, expected) => {
     expect(formatRelativeDate(iso, now)).toBe(expected);
   });

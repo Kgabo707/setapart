@@ -18,7 +18,7 @@ export const formatViewCount = (count: number): string => {
 export const formatViews = (count: number): string =>
   `${formatViewCount(count)} ${count === 1 ? 'view' : 'views'}`;
 
-const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+const RELATIVE_UNITS: [string, number][] = [
   ['year', 31_536_000],
   ['month', 2_592_000],
   ['week', 604_800],
@@ -27,6 +27,26 @@ const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['minute', 60],
 ];
 
+/**
+ * Units where Intl.RelativeTimeFormat's `numeric: 'auto'` mode uses a word instead of
+ * a number for magnitude 1 — e.g. "yesterday" rather than "1 day ago". Hour and minute
+ * always stay numeric regardless of auto mode, so they're deliberately absent here.
+ */
+const AUTO_LABELS: Record<string, [past: string, future: string]> = {
+  year: ['last year', 'next year'],
+  month: ['last month', 'next month'],
+  week: ['last week', 'next week'],
+  day: ['yesterday', 'tomorrow'],
+};
+
+/**
+ * Formats a date like "2 days ago" / "in 3 hours" / "yesterday", matching what
+ * `Intl.RelativeTimeFormat('en', { numeric: 'auto' })` produces — but without
+ * depending on it. That API isn't reliably present in React Native's JS engine
+ * (Hermes) the way it is on web or Node, and calling `new Intl.RelativeTimeFormat`
+ * where it's missing throws "undefined cannot be used as a constructor" — which
+ * crashed every screen rendering a video's date on-device while working fine on web.
+ */
 export const formatRelativeDate = (isoDate: string, now: Date = new Date()): string => {
   const timestamp = Date.parse(isoDate);
   if (Number.isNaN(timestamp)) return '';
@@ -34,10 +54,15 @@ export const formatRelativeDate = (isoDate: string, now: Date = new Date()): str
   const deltaSeconds = Math.round((timestamp - now.getTime()) / 1000);
   const magnitude = Math.abs(deltaSeconds);
 
-  for (const [unit, secondsInUnit] of UNITS) {
+  for (const [unit, secondsInUnit] of RELATIVE_UNITS) {
     if (magnitude >= secondsInUnit) {
       const value = Math.round(deltaSeconds / secondsInUnit);
-      return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(value, unit);
+      const auto = AUTO_LABELS[unit];
+      if (auto && Math.abs(value) === 1) {
+        return value < 0 ? auto[0] : auto[1];
+      }
+      const plural = Math.abs(value) === 1 ? unit : `${unit}s`;
+      return value < 0 ? `${Math.abs(value)} ${plural} ago` : `in ${value} ${plural}`;
     }
   }
   return 'just now';
